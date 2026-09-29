@@ -1,0 +1,30 @@
+# Ambiente: Python 3.12 + CPU (venv: .venv312)
+# Instalar com: pip install -r requirements.txt
+
+tensorflow==2.21.0
+scikit-learn>=1.8.0
+scipy>=1.17.0
+numpy>=2.4.0
+pandas>=3.0.0
+matplotlib>=3.10.0
+seaborn>=0.13.0
+pyserial>=3.5        # leitura do sensor de vibração (sensor_app.py)
+
+# ---------------------------------------------------------------------------
+# CPU basta para este projeto: medido ~1 s por época no main.py e ~3 ms por
+# janela no sensor_app.py. Rode no Windows mesmo:
+#   .\.venv312\Scripts\python.exe main.py
+#
+# GPU é opcional. Se um dia for necessária no Windows, há duas opções:
+#
+# OPÇÃO A — WSL2 (recomendado para GPUs novas como RTX 5070)
+#   1. Instale o WSL2 com Ubuntu: wsl --install
+#   2. Dentro do WSL2, instale o CUDA toolkit:
+#      https://developer.nvidia.com/cuda-downloads (selecione Linux > WSL-Ubuntu)
+#   3. Crie o venv dentro do WSL2 e instale normalmente:
+#      pip install tensorflow[and-cuda] scikit-learn scipy matplotlib seaborn
+#
+# OPÇÃO B — TF 2.10 com Python 3.10 (última versão com GPU nativa no Windows)
+#   Requisitos: CUDA 11.2 + cuDNN 8.1 instalados no sistema
+#   pip install tensorflow==2.10.0 (use Python 3.10, não 3.12)
+# ---------------------------------------------------------------------------

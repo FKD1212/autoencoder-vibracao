@@ -1,0 +1,3 @@
+# Normaliza finais de linha; scripts de shell sempre com LF (rodam no WSL/Linux)
+* text=auto
+*.sh text eol=lf

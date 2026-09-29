@@ -1,0 +1,99 @@
+/* Página do monitor de vibração — complementa style.css (tokens e cards vêm de lá). */
+
+/* ------------------------------------------------------------------ formulários */
+.form { display: grid; gap: 10px; }
+.field { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); min-width: 0; }
+.field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.with-btn { display: flex; gap: 6px; min-width: 0; }
+.with-btn select { flex: 1; }
+select, input[type="text"], input[type="number"] {
+  font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--page); border: 1px solid var(--border); border-radius: 8px;
+  padding: 6px 8px; width: 100%; min-width: 0;
+}
+select:focus-visible, input:focus-visible, .btn:focus-visible, .segmented button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--s1) 60%, transparent); outline-offset: 1px;
+}
+input[type="range"] { width: 100%; accent-color: var(--s1); margin: 2px 0 0; }
+.range-scale { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); }
+.hint { font-size: 12px; color: var(--muted); }
+.hint code, .calib-steps code { font: 11.5px var(--mono); color: var(--ink-2); }
+.form-error { color: var(--critical); font-size: 12.5px; margin: 0 0 8px; }
+.form-error:empty { display: none; }
+.card h3 { font-size: 13px; font-weight: 600; margin: 16px 0 8px; }
+
+.btn {
+  font: inherit; font-size: 13px; font-weight: 500;
+  padding: 7px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--ink);
+}
+.btn:hover:not(:disabled) { background: var(--hover); }
+.btn:disabled { opacity: .45; cursor: default; }
+.btn.primary { background: var(--s1); border-color: var(--s1); color: #fff; }
+.btn.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--s1) 85%, #000); }
+.btn.icon { padding: 6px 10px; }
+.btn.rec[aria-pressed="true"] { border-color: var(--critical); color: var(--critical); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+
+#card-source .kv, #card-calib .kv { margin-top: 6px; }
+
+.faults { display: grid; gap: 8px; }
+.fault-row { display: grid; grid-template-columns: minmax(0, 1fr) 110px 38px; align-items: center; gap: 10px; font-size: 12.5px; }
+.fault-row output { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+.calib-steps { margin: 0 0 12px; padding-left: 18px; font-size: 12.5px; color: var(--ink-2); display: grid; gap: 2px; }
+
+/* ------------------------------------------------------------------ estado */
+.pill[data-state="idle"] .pill-icon::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted);
+}
+
+.alarm { display: flex; align-items: center; gap: 16px; }
+.alarm-icon {
+  flex: none; width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 26px; font-weight: 700; line-height: 1;
+  border: 2px solid var(--axis); color: var(--muted);
+}
+.alarm-label { font-size: 30px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.alarm-sub { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+.alarm[data-state="normal"] .alarm-icon { border-color: var(--good); color: var(--good-text); background: color-mix(in srgb, var(--good) 10%, transparent); }
+.alarm[data-state="alerta"] .alarm-icon { border-color: var(--warning); color: var(--ink); background: color-mix(in srgb, var(--warning) 22%, transparent); }
+.alarm[data-state="anomalia"] .alarm-icon { border-color: var(--critical); background: var(--critical); color: #fff; }
+.alarm[data-state="busy"] .alarm-icon { border-color: var(--s1); border-right-color: transparent; animation: spin 1s linear infinite; }
+
+.score-block { margin-top: 18px; }
+.score-meter { position: relative; height: 10px; border-radius: 5px; background: var(--grid); }
+.score-fill { height: 100%; width: 0; border-radius: 5px; background: var(--s1); transition: width .25s ease; }
+.score-meter[data-state="normal"] .score-fill { background: var(--good); }
+.score-meter[data-state="alerta"] .score-fill { background: var(--warning); }
+.score-meter[data-state="anomalia"] .score-fill { background: var(--critical); }
+.score-mark { position: absolute; top: -4px; bottom: -4px; left: calc(100% / 3); width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink); }
+.score-scale { position: relative; display: flex; justify-content: space-between; margin-top: 4px; font-size: 11.5px; color: var(--muted); }
+.score-scale .mark-label { position: absolute; left: calc(100% / 3); transform: translateX(-50%); }
+
+.devs { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12.5px; }
+.devs:empty { display: none; }
+.devs li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 10px; border-radius: 8px; background: var(--hover); }
+.devs b { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.status-tiles { margin: 18px 0 0; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+
+/* ------------------------------------------------------------------ gráficos */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: 12.5px; color: var(--ink-2); margin: 4px 0 -4px; }
+.swatch.band { width: 14px; height: 10px; border-radius: 2px; background: color-mix(in srgb, var(--muted) 28%, transparent); }
+.swatch.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.chart-card:not(.has-profile) [data-needs-profile] { display: none; }
+
+/* ------------------------------------------------------------------ eventos */
+.events { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 300px; overflow: auto; }
+.event { border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+.event-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.event-head .icon { color: var(--critical); margin-right: 4px; }
+.event.open { border-color: var(--critical); background: var(--critical-wash); }
+.event-top { color: var(--ink-2); margin-top: 2px; }
+
+@media (max-width: 640px) {
+  .alarm-label { font-size: 24px; }
+  .alarm-icon { width: 44px; height: 44px; font-size: 20px; }
+  .fault-row { grid-template-columns: minmax(0, 1fr) 90px 34px; }
+}

@@ -1,0 +1,15 @@
+# Dados: grandes demais para o GitHub (limite de 100 MB por arquivo) — ver README
+*.csv
+*.zip
+*.npy
+
+# Gerados pelo código
+*.keras
+calibrations/
+recordings/
+
+# Ambientes, caches e editor
+.venv*/
+__pycache__/
+*.pyc
+.vscode/

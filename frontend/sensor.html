@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Monitor de Vibração</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 8h3l2-5 3 10 3-8 2 3h3' fill='none' stroke='%232a78d6' stroke-width='2' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="sensor.css">
+  <script>
+    try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Monitor de vibração</h1>
+      <p class="meta" id="src-meta">Nenhuma fonte conectada</p>
+    </div>
+    <div class="topbar-right">
+      <span class="conn" id="conn" data-state="connecting"><span class="conn-dot"></span><span id="conn-label">Conectando…</span></span>
+      <span class="pill" id="mode-pill" data-state="idle"><span class="pill-icon" aria-hidden="true"></span><span id="mode-label">Parado</span></span>
+      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Alternar tema claro/escuro" title="Alternar tema">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.75a6.25 6.25 0 0 1 0 12.5z" fill="currentColor"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="banner" id="error-banner" hidden>
+    <strong>✕ Falha</strong>
+    <code id="error-text"></code>
+  </div>
+
+  <main>
+    <!-- Fonte do sinal -->
+    <section class="card span-4" id="card-source">
+      <div class="card-head">
+        <h2>Fonte do sinal</h2>
+        <div class="segmented" role="tablist" aria-label="Tipo de fonte" id="src-kind">
+          <button type="button" role="tab" data-kind="sim">Simulador</button>
+          <button type="button" role="tab" data-kind="serial">Serial</button>
+          <button type="button" role="tab" data-kind="file">Gravação</button>
+        </div>
+      </div>
+
+      <div class="form" data-kind="sim">
+        <p class="hint">Máquina rotativa sintética: acelerômetro de 3 eixos a 1.600 Hz num mancal a 1.770 rpm, com falhas que você injeta abaixo. Use para testar a calibração antes de ter o sensor.</p>
+      </div>
+
+      <div class="form" data-kind="serial" hidden>
+        <label class="field">Porta
+          <span class="with-btn">
+            <select id="serial-port"></select>
+            <button class="btn icon" type="button" id="ports-refresh" title="Atualizar portas" aria-label="Atualizar portas">↻</button>
+          </span>
+        </label>
+        <div class="field-row">
+          <label class="field">Baud rate
+            <select id="serial-baud">
+              <option>115200</option><option>230400</option><option>460800</option><option selected>921600</option>
+            </select>
+          </label>
+          <label class="field">Taxa (Hz)
+            <input type="number" id="serial-fs" min="1" step="1" placeholder="do cabeçalho">
+          </label>
+        </div>
+        <p class="hint">A placa envia <code># fs=1600 channels=x,y,z</code> e uma linha <code>x,y,z</code> por amostra. Firmware de referência: <code>firmware/esp32_adxl345</code>.</p>
+      </div>
+
+      <div class="form" data-kind="file" hidden>
+        <label class="field">Gravação
+          <select id="file-name"></select>
+        </label>
+        <p class="hint">Reproduz em tempo real (em loop) um CSV salvo com o botão Gravar — útil para recalibrar sem a máquina.</p>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" type="button" id="btn-connect">Conectar</button>
+        <button class="btn" type="button" id="btn-disconnect">Desconectar</button>
+        <button class="btn rec" type="button" id="btn-record" aria-pressed="false">● Gravar</button>
+      </div>
+      <p class="form-error" id="src-error" role="alert"></p>
+
+      <dl class="kv" id="acq-kv"></dl>
+
+      <div id="sim-faults" hidden>
+        <h3>Injetar falha no simulador</h3>
+        <div class="faults" id="fault-list"></div>
+      </div>
+    </section>
+
+    <!-- Estado da detecção -->
+    <section class="card span-8" id="card-status">
+      <div class="alarm" id="alarm" data-state="off">
+        <span class="alarm-icon" id="alarm-icon" aria-hidden="true"></span>
+        <div class="alarm-text">
+          <div class="alarm-label" id="alarm-label">Desconectado</div>
+          <div class="alarm-sub" id="alarm-sub">Conecte uma fonte para começar.</div>
+        </div>
+      </div>
+
+      <div class="score-block" id="score-block" hidden>
+        <div class="meter-labels">
+          <span>Score = erro de reconstrução ÷ threshold</span>
+          <span class="tabular" id="score-value">—</span>
+        </div>
+        <div class="score-meter" id="score-meter"><div class="score-fill" id="score-fill"></div><span class="score-mark"></span></div>
+        <div class="score-scale"><span>0</span><span class="mark-label">threshold (1)</span><span>3+</span></div>
+        <ul class="devs" id="top-devs"></ul>
+      </div>
+
+      <div class="mini-tiles status-tiles" id="status-tiles"></div>
+    </section>
+
+    <!-- Sinal ao vivo -->
+    <div class="span-12 toolbar">
+      <span>Eixo</span>
+      <div class="segmented" role="tablist" aria-label="Eixo exibido" id="axis-select"></div>
+      <span class="muted" id="window-info">Janela de 1 s · nova análise a cada 0,5 s</span>
+    </div>
+
+    <section class="card span-6 chart-card" id="card-wave">
+      <div class="card-head">
+        <div>
+          <h2>Sinal</h2>
+          <p class="muted small" id="wave-sub">Últimas 512 amostras, sem a componente DC</p>
+        </div>
+      </div>
+      <div class="chart">
+        <canvas id="c-wave" role="img" aria-label="Forma de onda do eixo selecionado"></canvas>
+        <div class="empty">Aguardando dados…</div>
+      </div>
+    </section>
+
+    <section class="card span-6 chart-card" id="card-spec">
+      <div class="card-head">
+        <div>
+          <h2>Espectro por faixa</h2>
+          <p class="muted small">Energia de cada faixa de frequência na última janela (dB)</p>
+        </div>
+        <div class="legend">
+          <span class="key"><i class="swatch line" style="--c: var(--s1)"></i>Agora</span>
+          <span class="key" data-needs-profile><i class="swatch line" style="--c: var(--ink-2)"></i>Média da calibração</span>
+          <span class="key" data-needs-profile><i class="swatch band"></i>Faixa normal (±k·σ)</span>
+        </div>
+      </div>
+      <div class="chart">
+        <canvas id="c-spec" role="img" aria-label="Espectro por faixa comparado à faixa normal da calibração"></canvas>
+        <div class="empty">Aguardando a primeira janela…</div>
+      </div>
+    </section>
+
+    <!-- Score ao longo do tempo + eventos -->
+    <section class="card span-8 chart-card" id="card-score">
+      <div class="card-head">
+        <div>
+          <h2>Score de anomalia</h2>
+          <p class="muted small">Uma janela a cada 0,5 s · escala log · últimos 10 min</p>
+        </div>
+        <div class="legend">
+          <span class="key"><i class="swatch line" style="--c: var(--s1)"></i>Score</span>
+          <span class="key"><i class="swatch dot" style="--c: var(--critical)"></i>Janela acima do threshold</span>
+          <span class="key"><i class="swatch dash"></i>Threshold</span>
+        </div>
+      </div>
+      <div class="chart">
+        <canvas id="c-score" role="img" aria-label="Score de anomalia ao longo do tempo"></canvas>
+        <div class="empty" id="score-empty">Calibre para ativar a detecção</div>
+      </div>
+    </section>
+
+    <section class="card span-4" id="card-events">
+      <div class="card-head">
+        <h2>Eventos de anomalia</h2>
+        <span class="muted small tabular" id="events-count"></span>
+      </div>
+      <ul class="events" id="events"><li class="muted small">Nenhum evento.</li></ul>
+    </section>
+
+    <!-- Calibração -->
+    <section class="card span-4" id="card-calib">
+      <div class="card-head"><h2>Calibração</h2></div>
+      <ol class="calib-steps">
+        <li>Deixe a máquina funcionando <strong>em condição normal</strong>.</li>
+        <li>Grave a linha de base: o autoencoder aprende esse comportamento.</li>
+        <li>O threshold vira μ + k·σ do erro nas janelas normais de validação.</li>
+      </ol>
+      <div class="form">
+        <div class="field-row">
+          <label class="field">Nome
+            <input type="text" id="cal-name" placeholder="ex.: motor_bomba_1" maxlength="60">
+          </label>
+          <label class="field">Duração
+            <select id="cal-seconds">
+              <option value="30">30 s</option><option value="60">1 min</option>
+              <option value="120" selected>2 min</option><option value="300">5 min</option><option value="600">10 min</option>
+            </select>
+          </label>
+        </div>
+        <label class="field"><span>Sensibilidade · k = <output id="cal-k-value" class="tabular">3,0</output></span>
+          <input type="range" id="cal-k" min="1.5" max="6" step="0.1" value="3">
+          <span class="range-scale"><span>mais sensível</span><span>menos alarmes falsos</span></span>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="button" id="btn-calibrate">Iniciar calibração</button>
+        <button class="btn" type="button" id="btn-cancel" hidden>Cancelar</button>
+      </div>
+      <div class="meter-row" id="cal-progress" hidden>
+        <div class="meter-labels"><span id="cal-progress-label"></span><span class="muted tabular" id="cal-progress-right"></span></div>
+        <div class="meter" id="cal-bar"><div class="meter-fill" id="cal-fill"></div></div>
+      </div>
+      <p class="form-error" id="cal-error" role="alert"></p>
+
+      <h3>Calibração ativa</h3>
+      <div class="with-btn">
+        <select id="profile-select" aria-label="Calibrações salvas"></select>
+        <button class="btn" type="button" id="btn-load">Carregar</button>
+      </div>
+      <dl class="kv" id="profile-kv"></dl>
+    </section>
+
+    <section class="card span-4 chart-card" id="card-caltrain">
+      <div class="card-head">
+        <div>
+          <h2>Treino da calibração</h2>
+          <p class="muted small">MAE de reconstrução das features por época</p>
+        </div>
+        <div class="legend">
+          <span class="key"><i class="swatch line" style="--c: var(--s1)"></i>Treino</span>
+          <span class="key"><i class="swatch line" style="--c: var(--s2)"></i>Validação</span>
+        </div>
+      </div>
+      <div class="chart">
+        <canvas id="c-caltrain" role="img" aria-label="Loss de treino e validação da calibração por época"></canvas>
+        <div class="empty">Aparece durante a calibração</div>
+      </div>
+    </section>
+
+    <section class="card span-4 chart-card" id="card-calhist">
+      <div class="card-head">
+        <div>
+          <h2>Erro nas janelas normais</h2>
+          <p class="muted small" id="calhist-sub">% das janelas por faixa de erro</p>
+        </div>
+      </div>
+      <div class="legend legend-row">
+        <span class="key"><i class="swatch area" style="--c: var(--s1)"></i>Treino</span>
+        <span class="key"><i class="swatch area" style="--c: var(--s2)"></i>Validação</span>
+        <span class="key"><i class="swatch dash"></i>Threshold</span>
+      </div>
+      <div class="chart">
+        <canvas id="c-calhist" role="img" aria-label="Distribuição do erro de reconstrução nas janelas de calibração"></canvas>
+        <div class="empty">Sem calibração ativa</div>
+      </div>
+    </section>
+
+    <section class="card span-12" id="card-log">
+      <div class="card-head">
+        <h2>Log</h2>
+        <label class="muted small check"><input type="checkbox" id="log-follow" checked> Acompanhar</label>
+      </div>
+      <div class="log" id="log" tabindex="0" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <script src="vendor/chart.umd.js"></script>
+  <script src="common.js"></script>
+  <script src="sensor.js"></script>
+</body>
+</html>
